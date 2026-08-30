@@ -357,7 +357,10 @@ export function Link({ to, children, className, style, replace, onClick, ...rest
         onPress={go}
         accessibilityRole="link"
         accessibilityLabel={rest['aria-label'] as string | undefined}
-        style={[{ color: theme.primary }, inherited, view as object, text]}
+        // Inherited first: a link's colour is its own, the way `a { color: … }` beats the
+        // cascade. With the two the other way round a link inside a card took the card's body
+        // colour and stopped looking like a link at all.
+        style={[inherited, { color: theme.primary }, view as object, text]}
       >
         {children}
       </RNText>
