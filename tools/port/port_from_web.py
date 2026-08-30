@@ -37,6 +37,7 @@ HAND_WRITTEN = {
     'auth/officeStore.ts',
     'i18n/index.ts',
     'modules/registry.ts',
+    'components/DataTable.tsx',
     'components/Form.tsx',
     'components/ToastRegion.tsx',
     'layout/MainLayout.tsx',

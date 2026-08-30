@@ -10,15 +10,15 @@ import {
   type DataGridColumn,
 } from '@/ui'
 import { formatDate, formatDateTime, formatMoney, formatNumber } from '@/utils/format'
-import { Div, Li, NativeButton, Nav, Span, Ul } from '@/ui'
+import { Button, Div, Nav, Span } from '@/ui'
 
 /**
- * List-screen primitives, built on `rich-react-component`.
+ * List-screen primitives.
  *
- * The library owns the markup — `DataGrid`, `PageHeader`, `Spinner`, `Alert` — and this module
- * owns what the library deliberately does not: the Turkish and English copy. The library's
- * loading text, its pagination labels and its empty-state default are English literals, so the
- * states that carry words are rendered here and only the wordless ones are handed to it.
+ * `@/ui` owns the markup - `DataGrid`, `PageHeader`, `Spinner`, `Alert` - and this module owns
+ * what it deliberately does not: the Turkish and English copy. The library ships no words in any
+ * language, so the states that carry words are rendered here and only the wordless ones are
+ * handed to it.
  *
  * The exported names and their props are unchanged, so every module page keeps working.
  */
@@ -214,10 +214,16 @@ interface PaginationProps {
 }
 
 /**
- * The one control still drawn here rather than taken from the library: `Pagination`'s "Previous"
- * and "Next" labels and its `aria-label` are English literals with no prop to change them, and a
- * Turkish-first product cannot ship an English pager. Swap this body for `RichPagination` the day
- * the library accepts those labels.
+ * The pager under a list.
+ *
+ * Drawn here rather than taken from the component library for the reason it always was: the
+ * library's "Previous" and "Next" are English literals with no prop to change them, and a
+ * Turkish-first product cannot ship an English pager.
+ *
+ * What is different on a phone is the disabled state. The web version puts Bootstrap's
+ * `.page-item.disabled` on the list item, which stops the click through CSS; there is no CSS here,
+ * so a control that must not act has to actually refuse - otherwise the first page's "previous"
+ * would ask the server for page zero.
  */
 export function Pagination({ total, page, pageSize, onPageChange }: PaginationProps) {
   const { t } = useTranslation()
@@ -229,26 +235,33 @@ export function Pagination({ total, page, pageSize, onPageChange }: PaginationPr
   const last = Math.min(page * pageSize, total)
 
   return (
-    <Div className="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-3">
+    <Div className="pt-3" style={{ gap: 10 }}>
       <Span style={{ color: 'var(--kt-gray-500)', fontSize: '0.875rem' }}>
         {t('pagination.summary', { total, first, last })}
       </Span>
-      <Nav aria-label={t('pagination.label')}>
-        <Ul className="pagination pagination-sm mb-0">
-          <Li className={`page-item ${page <= 1 ? 'disabled' : ''}`}>
-            <NativeButton className="page-link" type="button" onClick={() => onPageChange(page - 1)}>
-              {t('pagination.previous')}
-            </NativeButton>
-          </Li>
-          <Li className="page-item disabled">
-            <Span className="page-link">{t('pagination.position', { page, pageCount })}</Span>
-          </Li>
-          <Li className={`page-item ${page >= pageCount ? 'disabled' : ''}`}>
-            <NativeButton className="page-link" type="button" onClick={() => onPageChange(page + 1)}>
-              {t('pagination.next')}
-            </NativeButton>
-          </Li>
-        </Ul>
+
+      <Nav aria-label={t('pagination.label')} className="d-flex align-items-center gap-2">
+        <Button
+          variant="light"
+          size="sm"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          {t('pagination.previous')}
+        </Button>
+
+        <Span className="flex-grow-1 text-center" style={{ color: 'var(--kt-gray-600)', fontSize: '0.875rem' }}>
+          {t('pagination.position', { page, pageCount })}
+        </Span>
+
+        <Button
+          variant="light"
+          size="sm"
+          disabled={page >= pageCount}
+          onClick={() => onPageChange(page + 1)}
+        >
+          {t('pagination.next')}
+        </Button>
       </Nav>
     </Div>
   )
