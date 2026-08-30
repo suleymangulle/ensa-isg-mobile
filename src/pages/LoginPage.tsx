@@ -45,9 +45,13 @@ export default function LoginPage() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme['body-bg'] }}>
+      {/* `padding` on both platforms, not just iOS. Android's own `adjustResize` is what the
+          default relies on, and it does not resize an edge-to-edge activity - so the password
+          field and the sign-in button sat underneath the keyboard. */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'android' ? 24 : 0}
       >
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}

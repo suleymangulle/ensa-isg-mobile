@@ -188,12 +188,11 @@ function DateControl({ value, disabled, onChange, className, style, type, placeh
           value={asDate}
           mode={type === 'time' ? 'time' : 'date'}
           display={Platform.OS === 'ios' ? 'inline' : 'default'}
-          onChange={(_event, selected) => {
+          onValueChange={(_event, selected) => {
             setOpen(false)
-            if (selected) {
-              onChange?.(domEvent(type === 'datetime-local' ? selected.toISOString() : toIsoDate(selected)))
-            }
+            onChange?.(domEvent(type === 'datetime-local' ? selected.toISOString() : toIsoDate(selected)))
           }}
+          onDismiss={() => setOpen(false)}
         />
       ) : null}
     </>

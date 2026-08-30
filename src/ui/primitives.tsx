@@ -203,6 +203,11 @@ export function Card({ children, title, header, footer, className, style, flush 
   const theme = useTheme()
   const { view } = useStyles(className, style)
 
+  // `false` and `null` are how a screen says "no body this time" - a collapsed permission group,
+  // a tab that renders nothing. Rendering the padded body anyway leaves an empty white strip under
+  // every one of them.
+  const hasBody = children !== undefined && children !== null && children !== false
+
   return (
     <View
       style={[
@@ -212,7 +217,8 @@ export function Card({ children, title, header, footer, className, style, flush 
           borderWidth: 1,
           borderColor: theme['border-color'],
           overflow: 'hidden',
-          marginBottom: 16,
+          // No default bottom margin - Bootstrap 5's `.card` has none either, and the screens say
+          // `mb-4` where they want one. Adding one here doubled every gap on the dashboard.
         },
         view,
       ]}
@@ -220,6 +226,13 @@ export function Card({ children, title, header, footer, className, style, flush 
       {(title || header) && (
         <View
           style={{
+            // A row, because the header is where a screen puts a title on the left and its
+            // controls on the right - `ms-auto` on the second child is the whole layout, and it
+            // means nothing in a column.
+            flexDirection: 'row',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 8,
             paddingHorizontal: 16,
             paddingVertical: 12,
             borderBottomWidth: 1,
@@ -235,9 +248,11 @@ export function Card({ children, title, header, footer, className, style, flush 
         </View>
       )}
 
-      <View style={flush ? undefined : { padding: 16 }}>
-        {withText(children, { color: theme['gray-700'] })}
-      </View>
+      {hasBody ? (
+        <View style={flush ? undefined : { padding: 16 }}>
+          {withText(children, { color: theme['gray-700'] })}
+        </View>
+      ) : null}
 
       {footer ? (
         <View
@@ -570,6 +585,15 @@ export interface TabItem {
   content?: ReactNode
 }
 
+/**
+ * The tab strip, and the panel under it when the items carry one.
+ *
+ * Both shapes exist in the application being ported: a screen that keeps its own state and renders
+ * the body itself passes items with only a `key` and a `label`, while a screen that declares the
+ * whole thing as one array passes `content` as well. Rendering the active panel only when some
+ * item has one keeps both working - and a strip that silently dropped the panels is what a company
+ * detail screen looked like before this: three tabs and nothing underneath them.
+ */
 export function Tabs({
   items,
   activeKey,
@@ -586,7 +610,9 @@ export function Tabs({
   const theme = useTheme()
   const { view } = useStyles(className, undefined)
 
-  return (
+  const active = items.find((item) => item.key === activeKey)
+
+  const strip = (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
@@ -621,15 +647,34 @@ export function Tabs({
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive, disabled: item.disabled }}
             style={[
-              { paddingHorizontal: 12, paddingVertical: 10, opacity: item.disabled ? 0.5 : 1 },
+              {
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                opacity: item.disabled ? 0.5 : 1,
+              },
               variant === 'pills' ? pillStyle : underlineStyle,
             ]}
           >
             <RNText style={labelStyle}>{item.label}</RNText>
+            {item.badge !== undefined && item.badge !== null ? (
+              <RNText style={{ color: theme['gray-500'], fontSize: 12 }}>{item.badge}</RNText>
+            ) : null}
           </Pressable>
         )
       })}
     </ScrollView>
+  )
+
+  if (!items.some((item) => item.content !== undefined)) return strip
+
+  return (
+    <View>
+      {strip}
+      <View style={{ paddingTop: 12 }}>{active?.content}</View>
+    </View>
   )
 }
 

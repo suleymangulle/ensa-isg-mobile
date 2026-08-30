@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from 'react'
+import { useWindowDimensions } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   Alert,
@@ -185,12 +186,27 @@ export function SearchBar({
   children?: ReactNode
 }) {
   const { t } = useTranslation()
-  // Two search bars on one screen — a list and a picker inside its dialog — must not share an id.
+  // Two search bars on one screen - a list and a picker inside its dialog - must not share an id.
   const inputId = useId()
 
+  // The web bar is a wrapping row: the field takes up to 320px and the filters beside it wrap onto
+  // the next line when they no longer fit. React Native wraps only what it cannot shrink, and a
+  // form control shrinks - so on a narrow screen the field kept its 320px and every filter beside
+  // it was squeezed to a sliver. Below the `sm` breakpoint the bar stacks instead, which is what
+  // the wrap was producing in a narrow browser anyway.
+  const { width } = useWindowDimensions()
+  const isNarrow = width < 576
+
   return (
-    <Div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-      <Div className="flex-grow-1" style={{ maxWidth: 320 }}>
+    <Div
+      className="mb-3"
+      style={
+        isNarrow
+          ? { gap: 8 }
+          : { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }
+      }
+    >
+      <Div style={isNarrow ? undefined : { flexGrow: 1, maxWidth: 320 }}>
         <Input
           id={inputId}
           type="search"

@@ -284,6 +284,13 @@ export function resolveClassName(className: string | undefined, width: number): 
   const text: Record<string, unknown> = {}
   const meta: ClassMeta = { visuallyHidden: false, truncate: false }
 
+  // Bootstrap's `.row > * { width: 100% }` is what a column falls back to below its breakpoint:
+  // `col-md-6` is half a row on a tablet and a full-width block on a phone. Skipping the class
+  // outright loses that, and the element then flows inline beside its neighbours - which is how a
+  // detail screen's label/value pairs ended up as one run-on paragraph.
+  let sawColumn = false
+  let widthApplied = false
+
   for (const raw of className.split(/\s+/)) {
     if (!raw) continue
 
@@ -294,15 +301,31 @@ export function resolveClassName(className: string | undefined, width: number): 
 
     if (infix) {
       const [, head, breakpoint, tail] = infix
+      if (head === 'col') sawColumn = true
       if (width < BREAKPOINTS[breakpoint]) continue
       name = `${head}-${tail}`
     } else {
       // `d-lg-none` style classes are caught above; the bare `d-none` falls through here.
       const bareInfix = /^(col|d|flex|order|text|justify-content|align-items|m[tbsexy]?|p[tbsexy]?|g[xy]?)-(sm|md|lg|xl|xxl)$/.exec(raw)
-      if (bareInfix) continue
+      if (bareInfix) {
+        if (bareInfix[1] === 'col') sawColumn = true
+        continue
+      }
     }
 
-    if (apply(name, view, text, meta, width)) continue
+    if (/^col(-|$)/.test(name)) sawColumn = true
+
+    if (apply(name, view, text, meta, width)) {
+      if (/^col(-|$)/.test(name)) widthApplied = true
+      continue
+    }
+  }
+
+  if (sawColumn && !widthApplied) {
+    view.flexBasis = '100%'
+    view.flexGrow = 0
+    view.flexShrink = 1
+    view.minWidth = 0
   }
 
   if (meta.textAlign) text.textAlign = meta.textAlign
@@ -392,10 +415,12 @@ function apply(
   if (name === 'row') {
     view.flexDirection = 'row'
     view.flexWrap = 'wrap'
-    // Bootstrap's default gutter, applied as a gap because there are no negative-margin tricks
-    // to undo here.
-    view.rowGap = view.rowGap ?? 16
-    view.columnGap = view.columnGap ?? 16
+    // Bootstrap's default gutter is horizontal only - `--bs-gutter-x: 1.5rem`, `--bs-gutter-y: 0`.
+    // A vertical gutter here would space out every stacked column on a phone, which is where a
+    // definition list stops reading as a list of pairs. `g-3` and friends set both when a screen
+    // actually wants one.
+    view.columnGap = view.columnGap ?? 24
+    view.rowGap = view.rowGap ?? 0
     return true
   }
 
@@ -453,7 +478,12 @@ function apply(
   }
   if (name === 'w-auto') return true
   if (name === 'h-100') {
-    view.height = '100%'
+    // Not `height: '100%'`. In Bootstrap this class sits on a column inside a `row` and means
+    // "match your siblings"; the percentage resolves against a parent whose own height came from
+    // its content. React Native has no such resolution - a percentage height inside an auto-height
+    // parent takes the whole screen - so the intent is expressed directly instead. Getting this
+    // wrong is visible immediately: every dashboard tile becomes a screenful.
+    view.alignSelf = 'stretch'
     return true
   }
   if (name === 'min-vh-100' || name === 'vh-100') {
@@ -462,6 +492,25 @@ function apply(
   }
   if (name === 'min-w-0') {
     view.minWidth = 0
+    return true
+  }
+
+  // --- component chrome the utilities have to stand in for ------
+  if (name === 'btn-group' || name === 'input-group' || name === 'breadcrumb') {
+    // These are Bootstrap component classes rather than utilities, and each one's whole visual
+    // contribution on a phone is that its children sit in a row. Without this the language
+    // switcher's two buttons stack on top of each other, which is exactly what happened.
+    view.flexDirection = 'row'
+    view.alignItems = 'center'
+    view.gap = view.gap ?? 4
+    return true
+  }
+  if (name === 'btn-group-vertical') {
+    view.flexDirection = 'column'
+    return true
+  }
+  if (name === 'btn-group-sm' || name === 'btn-group-lg' || name === 'input-group-sm') {
+    // Sizing lives on the controls themselves; the group only decides the direction.
     return true
   }
 

@@ -130,11 +130,26 @@ const KEYBOARDS: Partial<Record<InputType, 'default' | 'email-address' | 'numeri
   number: 'decimal-pad',
 }
 
+/**
+ * The `type` a caller actually meant.
+ *
+ * The web component forwards `inputProps` straight onto its `<input>`, so more than fifty screens
+ * write `inputProps={{ type: 'date' }}` rather than `type="date"` - the escape hatch became the
+ * habit. Both are read here: a date filter that arrived as a plain text box is a field the user
+ * cannot fill, and it is invisible in a typecheck because the prop was never wrong, only ignored.
+ */
+function resolvedType(props: InputProps): InputType {
+  const fromEscapeHatch = props.inputProps?.type
+  return props.type ?? (typeof fromEscapeHatch === 'string' ? (fromEscapeHatch as InputType) : 'text')
+}
+
 export function Input(props: InputProps) {
-  if (props.type === 'date' || props.type === 'datetime-local' || props.type === 'time') {
-    return <DateInput {...props} />
+  const type = resolvedType(props)
+
+  if (type === 'date' || type === 'datetime-local' || type === 'time') {
+    return <DateInput {...props} type={type} />
   }
-  return <TextControl {...props} />
+  return <TextControl {...props} type={type} />
 }
 
 function TextControl({
@@ -160,7 +175,10 @@ function TextControl({
           keyboardType={KEYBOARDS[type] ?? 'default'}
           autoCapitalize={type === 'email' || type === 'url' ? 'none' : 'sentences'}
           autoCorrect={type !== 'email' && type !== 'url'}
-          accessibilityLabel={(inputProps?.['aria-label'] as string) ?? undefined}
+          inputMode={inputProps?.inputMode as 'text' | 'numeric' | 'decimal' | 'email' | 'tel' | 'url' | undefined}
+          accessibilityLabel={
+            (inputProps?.['aria-label'] as string) ?? (inputProps?.title as string) ?? undefined
+          }
           returnKeyType={type === 'search' ? 'search' : 'done'}
         />
         {endAdornment}
@@ -216,10 +234,11 @@ function DateInput({
           value={asDate}
           mode={type === 'time' ? 'time' : 'date'}
           display={Platform.OS === 'ios' ? 'inline' : 'default'}
-          onChange={(_event, selected) => {
-            setOpen(Platform.OS === 'ios' ? false : false)
-            if (selected) onChange?.(type === 'datetime-local' ? selected.toISOString() : toIsoDate(selected))
+          onValueChange={(_event, selected) => {
+            setOpen(false)
+            onChange?.(type === 'datetime-local' ? selected.toISOString() : toIsoDate(selected))
           }}
+          onDismiss={() => setOpen(false)}
         />
       ) : null}
     </FormField>
