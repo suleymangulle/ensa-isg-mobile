@@ -1,0 +1,315 @@
+import { useState } from 'react'
+import { Link, useNavigate, useParams } from '@/navigation/router'
+import { useTranslation } from 'react-i18next'
+import { Badge, Button, Card } from '@/ui'
+import { ErrorPanel, PageTitle, Spinner } from '@/components/DataTable'
+import { ConfirmDialog } from '@/components/Form'
+import { errorMessage } from '@/api/http'
+import { useDelete } from '@/api/mutations'
+import { formatDate } from '@/utils/format'
+import CorrectiveActionFormModal from './CorrectiveActionFormModal'
+import FieldObservationFormModal from './FieldObservationFormModal'
+import FieldObservationLineModal from './FieldObservationLineModal'
+import {
+  OBSERVATION_ENDPOINTS,
+  useFieldObservationReportDetail,
+  useRemoveObservationLine,
+  type FieldObservationLineDto,
+  type FieldObservationLineNavigationDto,
+} from './api'
+import {
+  AlertPanel,
+  CORRECTIVE_ACTION_STATUS_BADGE,
+  EmptyHint,
+  RISK_CATEGORY_BADGE,
+  Term,
+} from './components'
+import { Div, H2, H3, Li, Nav, Ol, Span, Strong, Ul } from '@/ui'
+
+export default function FieldObservationDetailPage() {
+  const { t } = useTranslation()
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const reportId = Number(id)
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isAddingLine, setIsAddingLine] = useState(false)
+  const [editingLine, setEditingLine] = useState<FieldObservationLineDto | null>(null)
+  const [deletingLine, setDeletingLine] = useState<FieldObservationLineDto | null>(null)
+  const [raisingActionFor, setRaisingActionFor] = useState<FieldObservationLineDto | null>(null)
+
+  const { data, isLoading, error } = useFieldObservationReportDetail(reportId)
+
+  const removeReport = useDelete(OBSERVATION_ENDPOINTS.fieldObservationReport, {
+    onSuccess: () => navigate('/field-observations'),
+  })
+  const removeLine = useRemoveObservationLine(reportId, () => setDeletingLine(null))
+
+  if (isLoading) return <Spinner />
+  if (error) return <ErrorPanel message={errorMessage(error)} />
+  if (!data) return <ErrorPanel message={t('errors.notFound')} />
+
+  const report = data.report
+  const none = t('common.none')
+  const overdueCount = data.lines.filter((entry) => entry.line.isOverdue).length
+
+  return (
+    <>
+      <Nav aria-label={t('nav.breadcrumb')} className="mb-3">
+        <Ol className="breadcrumb mb-0" style={{ fontSize: '0.875rem' }}>
+          <Li className="breadcrumb-item">
+            <Link to="/field-observations" className="text-decoration-none">
+              {t('fieldObservation.list.title')}
+            </Link>
+          </Li>
+          <Li className="breadcrumb-item active" aria-current="page">
+            {formatDate(report.date) ?? t('fieldObservation.detail.fallbackTitle')}
+          </Li>
+        </Ol>
+      </Nav>
+
+      <PageTitle
+        title={t('fieldObservation.detail.title', { date: formatDate(report.date) ?? '' })}
+        description={data.company?.displayName ?? undefined}
+        action={
+          <Div className="d-flex gap-2">
+            <Button variant="light" 
+              onClick={() => setIsEditing(true)}
+            >
+              {t('common.edit')}
+            </Button>
+            <Button variant="light" 
+              onClick={() => setIsDeleting(true)}
+            >
+              {t('common.delete')}
+            </Button>
+          </Div>
+        }
+      />
+
+      {overdueCount > 0 && (
+        <Div className="mb-4">
+          <AlertPanel tone="danger">
+            <Div>
+              <Strong className="d-block">
+                {t('fieldObservation.lines.overdueBanner', { total: overdueCount })}
+              </Strong>
+              <Span>{t('fieldObservation.lines.overdueDescription')}</Span>
+            </Div>
+          </AlertPanel>
+        </Div>
+      )}
+
+      <Card
+        className="mb-4"
+      >
+          <H2 className="h6 fw-semibold mb-3" style={{ color: 'var(--kt-gray-900)' }}>
+            {t('fieldObservation.detail.general')}
+          </H2>
+          <Div className="row mb-0" style={{ fontSize: '0.9375rem' }}>
+            <Term label={t('fieldObservation.fields.company')}>
+              {data.company?.displayName ?? none}
+            </Term>
+            <Term label={t('fieldObservation.fields.department')}>
+              {data.department?.displayName ?? none}
+            </Term>
+            <Term label={t('fieldObservation.fields.date')}>
+              {formatDate(report.date) ?? none}
+            </Term>
+            <Term label={t('fieldObservation.fields.lineCount')}>{data.lines.length}</Term>
+          </Div>
+        
+      </Card>
+
+      <Card
+        header={
+        <Div className="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-4 border-0">
+          <H2 className="h6 fw-semibold mb-0" style={{ color: 'var(--kt-gray-900)' }}>
+            {t('fieldObservation.lines.title')}
+          </H2>
+          <Button variant="primary" size="sm"
+            onClick={() => setIsAddingLine(true)}
+          >
+            {t('fieldObservation.lines.create')}
+          </Button>
+        
+        </Div>
+        }
+      >
+          {data.lines.length === 0 ? (
+            <EmptyHint message={t('fieldObservation.lines.empty')} />
+          ) : (
+            <Ul className="list-unstyled mb-0 d-flex flex-column gap-3">
+              {data.lines.map((entry) => (
+                <LineCard
+                  key={entry.line.id}
+                  entry={entry}
+                  onEdit={() => setEditingLine(entry.line)}
+                  onDelete={() => setDeletingLine(entry.line)}
+                  onRaiseAction={() => setRaisingActionFor(entry.line)}
+                />
+              ))}
+            </Ul>
+          )}
+        
+      </Card>
+
+      {isEditing && (
+        <FieldObservationFormModal report={report} onClose={() => setIsEditing(false)} />
+      )}
+
+      {isAddingLine && (
+        <FieldObservationLineModal
+          reportId={reportId}
+          companyId={report.companyId}
+          onClose={() => setIsAddingLine(false)}
+        />
+      )}
+
+      {editingLine && (
+        <FieldObservationLineModal
+          reportId={reportId}
+          companyId={report.companyId}
+          line={editingLine}
+          onClose={() => setEditingLine(null)}
+        />
+      )}
+
+      {raisingActionFor && (
+        <CorrectiveActionFormModal
+          defaultCompanyId={report.companyId}
+          fieldObservationLineId={raisingActionFor.id}
+          onClose={() => setRaisingActionFor(null)}
+        />
+      )}
+
+      <ConfirmDialog
+        isOpen={isDeleting}
+        title={t('fieldObservation.list.deleteTitle')}
+        message={t('fieldObservation.list.deleteMessage', {
+          date: formatDate(report.date) ?? '',
+          company: data.company?.displayName ?? '',
+        })}
+        isBusy={removeReport.isPending}
+        error={removeReport.error ? errorMessage(removeReport.error) : null}
+        onCancel={() => setIsDeleting(false)}
+        onConfirm={() => removeReport.mutate(reportId)}
+      />
+
+      <ConfirmDialog
+        isOpen={deletingLine !== null}
+        title={t('fieldObservation.lines.deleteTitle')}
+        message={t('fieldObservation.lines.deleteMessage', {
+          nonConformity: deletingLine?.nonConformity ?? '',
+        })}
+        isBusy={removeLine.isPending}
+        error={removeLine.error ? errorMessage(removeLine.error) : null}
+        onCancel={() => setDeletingLine(null)}
+        onConfirm={() => deletingLine && removeLine.mutate(deletingLine.id)}
+      />
+    </>
+  )
+}
+
+/** One non-conformity line with its measures, owner, deadline and derived corrective actions. */
+function LineCard({
+  entry,
+  onEdit,
+  onDelete,
+  onRaiseAction,
+}: {
+  entry: FieldObservationLineNavigationDto
+  onEdit: () => void
+  onDelete: () => void
+  onRaiseAction: () => void
+}) {
+  const { t } = useTranslation()
+  const { line } = entry
+  const none = t('common.none')
+
+  return (
+    <Li
+      className="p-3 rounded"
+      style={{
+        backgroundColor: 'var(--kt-gray-100)',
+        borderInlineStart: `4px solid ${line.isOverdue ? 'var(--kt-danger)' : 'var(--kt-gray-300)'}`,
+      }}
+    >
+      <Div className="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
+        <Div className="d-flex flex-wrap align-items-center gap-2">
+          <Badge variant={RISK_CATEGORY_BADGE[line.riskCategory]}>
+            {t(`enums.riskCategory.${line.riskCategory}`)}
+          </Badge>
+          {line.isOverdue && (
+            <Badge variant="danger" className="fw-bold">
+              {t('fieldObservation.lines.overdue')}
+            </Badge>
+          )}
+        </Div>
+        <Div className="d-flex gap-1">
+          <Button variant="light" size="sm" 
+            onClick={onRaiseAction}
+            aria-label={t('fieldObservation.lines.raiseAction')}
+            title={t('fieldObservation.lines.raiseAction')}
+          >
+            {t('fieldObservation.lines.raiseAction')}
+          </Button>
+          <Button variant="light" size="sm" 
+            onClick={onEdit}
+            aria-label={t('fieldObservation.lines.editAction')}
+            title={t('fieldObservation.lines.editAction')}
+          >
+            <Span aria-hidden="true">✎</Span>
+          </Button>
+          <Button variant="light" size="sm" 
+            onClick={onDelete}
+            aria-label={t('fieldObservation.lines.deleteAction')}
+            title={t('fieldObservation.lines.deleteAction')}
+          >
+            <Span aria-hidden="true">🗑</Span>
+          </Button>
+        </Div>
+      </Div>
+
+      <Div className="row mb-0" style={{ fontSize: '0.9375rem' }}>
+        <Term label={t('fieldObservation.lines.nonConformity')}>{line.nonConformity}</Term>
+        <Term label={t('fieldObservation.lines.measures')}>{line.measures ?? none}</Term>
+        <Term label={t('fieldObservation.lines.owner')}>
+          {entry.ownerEmployee?.displayName ?? line.owner ?? none}
+        </Term>
+        <Term label={t('fieldObservation.lines.deadlineDate')}>
+          {formatDate(line.deadlineDate) ?? none}
+        </Term>
+      </Div>
+
+      {entry.correctiveActions.length > 0 && (
+        <Div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--kt-border-color)' }}>
+          <H3 className="h6 mb-2" style={{ color: 'var(--kt-gray-700)' }}>
+            {t('fieldObservation.lines.derivedActions')}
+          </H3>
+          <Ul className="list-unstyled mb-0 d-flex flex-column gap-1">
+            {entry.correctiveActions.map((action) => (
+              <Li key={action.id} className="d-flex flex-wrap align-items-center gap-2">
+                <Link
+                  to={`/corrective-actions/${action.id}`}
+                  className="fw-semibold text-decoration-none"
+                >
+                  {action.finding}
+                </Link>
+                <Badge variant={CORRECTIVE_ACTION_STATUS_BADGE[action.operationResult]}>
+                  {t(`enums.correctiveActionStatus.${action.operationResult}`)}
+                </Badge>
+                {action.isOverdue && (
+                  <Badge variant="danger">
+                    {t('correctiveAction.overdue.badge')}
+                  </Badge>
+                )}
+              </Li>
+            ))}
+          </Ul>
+        </Div>
+      )}
+    </Li>
+  )
+}

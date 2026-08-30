@@ -1,0 +1,143 @@
+import { useState, type ReactNode } from 'react'
+import { Link, useParams } from '@/navigation/router'
+import { useTranslation } from 'react-i18next'
+import { Badge, Button, Card } from '@/ui'
+import { ErrorPanel, PageTitle, Spinner } from '@/components/DataTable'
+import { errorMessage } from '@/api/http'
+import { downloadFile } from '@/api/download'
+import { formatDate, formatFileSize } from '@/utils/format'
+import {
+  documentContentPath,
+  useDocumentDetail,
+} from './api'
+import { Code, Div, Li, Nav, Ol, Span, Strong } from '@/ui'
+
+/**
+ * `GET api/document/{id}/detail` — the document with its category and owning company.
+ *
+ * The payload is fetched through `downloadFile`, which attaches the bearer token; the storage
+ * coordinates stay server-side and are
+ * kept off the DTO on purpose. The disabled button says so rather than leaving the reader to
+ * wonder where the file is.
+ */
+export default function DocumentDetailPage() {
+  const { t } = useTranslation()
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+  const { id } = useParams()
+
+  const { data, isLoading, error } = useDocumentDetail(Number(id))
+
+  if (isLoading) return <Spinner />
+  if (error) return <ErrorPanel message={errorMessage(error)} />
+  if (!data) return <ErrorPanel message={t('errors.notFound')} />
+
+  const document = data.document
+  const none = t('common.none')
+  const size = formatFileSize(document.sizeBytes) ?? none
+
+  return (
+    <>
+      <Nav aria-label={t('nav.breadcrumb')} className="mb-3">
+        <Ol className="breadcrumb mb-0" style={{ fontSize: '0.875rem' }}>
+          <Li className="breadcrumb-item">
+            <Link to="/documents" className="text-decoration-none">
+              {t('document.list.title')}
+            </Link>
+          </Li>
+          <Li className="breadcrumb-item active" aria-current="page">
+            {document.documentName}
+          </Li>
+        </Ol>
+      </Nav>
+
+      {downloadError && <ErrorPanel message={downloadError} />}
+
+      <PageTitle
+        title={document.documentName || t('document.detail.fallbackTitle')}
+        description={t('document.detail.subtitle', { size })}
+        action={
+          <Button variant="light"
+            disabled={isDownloading}
+            aria-label={t('document.detail.download')}
+            onClick={async () => {
+              setIsDownloading(true)
+              setDownloadError(null)
+              try {
+                await downloadFile(documentContentPath(document.id), document.documentName)
+              } catch (cause) {
+                setDownloadError(errorMessage(cause))
+              } finally {
+                setIsDownloading(false)
+              }
+            }}
+          >
+            {t('document.detail.download')}
+          </Button>
+        }
+      />
+
+      <Div
+        className="alert border-0"
+        style={{ backgroundColor: 'var(--kt-primary-light)', color: 'var(--kt-primary)' }}
+      >
+        {t('document.list.metadataOnlyNotice')}
+      </Div>
+
+      <Card>
+          <Div className="row mb-0" style={{ fontSize: '0.9375rem' }}>
+            <Term label={t('document.fields.category')}>
+              {data.category?.displayName ?? none}
+            </Term>
+            <Term label={t('document.fields.company')}>{data.company?.displayName ?? none}</Term>
+            <Term label={t('document.fields.ownerType')}>
+              {t(`enums.documentOwnerType.${document.ownerType}`)}
+            </Term>
+            <Term label={t('document.fields.ownerRecordId')}>
+              {document.ownerRecordId ?? none}
+            </Term>
+            <Term label={t('document.fields.extension')}>
+              {document.extension ? (
+                <Badge variant="primary" className="text-uppercase">{document.extension}</Badge>
+              ) : (
+                none
+              )}
+            </Term>
+            <Term label={t('document.fields.contentType')}>{document.contentType ?? none}</Term>
+            <Term label={t('document.fields.sizeBytes')}>{size}</Term>
+            <Term label={t('document.fields.sha256')}>
+              {document.sha256 ? (
+                <Code className="text-break">{document.sha256}</Code>
+              ) : (
+                none
+              )}
+            </Term>
+            <Term label={t('document.fields.creationTime')}>
+              {formatDate(document.creationTime) ?? none}
+            </Term>
+            <Term label={t('document.fields.lastModificationTime')}>
+              {formatDate(document.lastModificationTime) ?? none}
+            </Term>
+            <Term label={t('document.fields.status')}>
+              <Badge variant={document.isActive ? 'success' : 'danger'}>
+                {document.isActive ? t('common.active') : t('common.passive')}
+              </Badge>
+            </Term>
+          </Div>
+        
+      </Card>
+    </>
+  )
+}
+
+/** One `<Strong>`/`<Span>` pair of the definition list. */
+function Term({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <>
+      <Strong className="col-sm-3" style={{ color: 'var(--kt-gray-500)', fontWeight: 500 }}>
+        {label}
+      </Strong>
+      <Span className="col-sm-9">{children}</Span>
+    </>
+  )
+}

@@ -1,0 +1,296 @@
+import { useState, type ReactNode } from 'react'
+import { Link, useNavigate, useParams } from '@/navigation/router'
+import { useTranslation } from 'react-i18next'
+import { Badge, Button, Card, Tabs } from '@/ui'
+import { ErrorPanel, PageTitle, Spinner } from '@/components/DataTable'
+import { ConfirmDialog } from '@/components/Form'
+import { errorMessage } from '@/api/http'
+import { useDelete } from '@/api/mutations'
+import { formatDate } from '@/utils/format'
+import OrganizationFormModal from './OrganizationFormModal'
+import { TENANCY_RESOURCES, useOrganizationDetail, type OrganizationNavigationDto } from './api'
+import { Div, Li, Nav, Ol, P, Span, Ul } from '@/ui'
+
+const TABS = ['general', 'offices', 'subscription'] as const
+
+type TabKey = (typeof TABS)[number]
+
+export default function OrganizationDetailPage() {
+  const { t } = useTranslation()
+  const { id } = useParams()
+  const navigate = useNavigate()
+
+  const [activeTab, setActiveTab] = useState<TabKey>('general')
+  const [isEditOpen, setEditOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
+
+  const { data, isLoading, error } = useOrganizationDetail(Number(id))
+  const remove = useDelete(TENANCY_RESOURCES.organization, {
+    onSuccess: () => navigate('/organizations', { replace: true }),
+  })
+
+  if (isLoading) return <Spinner />
+  if (error) return <ErrorPanel message={errorMessage(error)} />
+  if (!data) return <ErrorPanel message={t('errors.notFound')} />
+
+  const organization = data.organization
+
+  return (
+    <>
+      <Nav aria-label={t('nav.breadcrumb')} className="mb-3">
+        <Ol className="breadcrumb mb-0" style={{ fontSize: '0.875rem' }}>
+          <Li className="breadcrumb-item">
+            <Link to="/organizations" className="text-decoration-none">
+              {t('organization.list.title')}
+            </Link>
+          </Li>
+          <Li className="breadcrumb-item active" aria-current="page">
+            {organization.name}
+          </Li>
+        </Ol>
+      </Nav>
+
+      <PageTitle
+        title={organization.name}
+        description={t('organization.detail.subtitle', { code: organization.code })}
+        action={
+          <Div className="d-flex flex-wrap gap-2">
+            <Button variant="primary" onClick={() => setEditOpen(true)}>
+              {t('common.edit')}
+            </Button>
+            <Button variant="light" 
+              onClick={() => setDeleteOpen(true)}
+            >
+              {t('common.delete')}
+            </Button>
+          </Div>
+        }
+      />
+
+      <Div className="row g-4 mb-4">
+        <QuotaCard
+          label={t('organization.detail.activeUserCount')}
+          value={data.activeUserCount}
+          quota={organization.maximumUserCount}
+        />
+        <QuotaCard
+          label={t('organization.detail.activeCompanyCount')}
+          value={data.activeCompanyCount}
+          quota={organization.maximumCompanyCount}
+        />
+        <QuotaCard label={t('organization.detail.officeCount')} value={data.officeCount} />
+      </Div>
+
+      <Card>
+        <Tabs
+          items={TABS.map((tab) => ({
+            key: tab,
+            label: t(`organization.detail.tabs.${tab}`),
+            content:
+              tab === 'general' ? (
+                <GeneralTab detail={data} />
+              ) : tab === 'offices' ? (
+                <OfficesTab detail={data} />
+              ) : (
+                <SubscriptionTab detail={data} />
+              ),
+          }))}
+          activeKey={activeTab}
+          onChange={(key) => setActiveTab(key as TabKey)}
+          variant="underline"
+        />
+      </Card>
+
+      {isEditOpen && (
+        <OrganizationFormModal organization={organization} onClose={() => setEditOpen(false)} />
+      )}
+
+      <ConfirmDialog
+        isOpen={isDeleteOpen}
+        title={t('organization.actions.deleteTitle')}
+        message={t('organization.actions.deleteMessage', { name: organization.name })}
+        isBusy={remove.isPending}
+        error={remove.error ? errorMessage(remove.error) : null}
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={() => remove.mutate(organization.id)}
+      />
+    </>
+  )
+}
+
+function QuotaCard({
+  label,
+  value,
+  quota,
+}: {
+  label: string
+  value: number
+  quota?: number | null
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <Div className="col-sm-6 col-lg-4">
+      <Card
+        className="h-100"
+      >
+          <Div
+            className="text-uppercase fw-semibold mb-2"
+            style={{ color: 'var(--kt-gray-500)', fontSize: '0.6875rem', letterSpacing: '0.06em' }}
+          >
+            {label}
+          </Div>
+          <Div className="fs-2 fw-bold" style={{ color: 'var(--kt-gray-900)' }}>
+            {value}
+            {quota != null && (
+              <Span className="fs-6 fw-normal" style={{ color: 'var(--kt-gray-500)' }}>
+                {' / '}
+                {quota}
+              </Span>
+            )}
+          </Div>
+          {quota == null && (
+            <Div style={{ color: 'var(--kt-gray-500)', fontSize: '0.8125rem' }}>
+              {t('organization.detail.unlimited')}
+            </Div>
+          )}
+        
+      </Card>
+    </Div>
+  )
+}
+
+function Detail({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Div className="col-md-6 col-xl-4 mb-4">
+      <Div
+        className="text-uppercase fw-semibold mb-1"
+        style={{ color: 'var(--kt-gray-500)', fontSize: '0.6875rem', letterSpacing: '0.06em' }}
+      >
+        {label}
+      </Div>
+      <Div style={{ color: 'var(--kt-gray-800)' }}>{children}</Div>
+    </Div>
+  )
+}
+
+function GeneralTab({ detail }: { detail: OrganizationNavigationDto }) {
+  const { t } = useTranslation()
+  const organization = detail.organization
+  const none = t('common.none')
+
+  return (
+    <Div className="row">
+      <Detail label={t('organization.fields.code')}>{organization.code}</Detail>
+      <Detail label={t('organization.fields.organizationType')}>
+        {detail.organizationType?.displayName ?? none}
+      </Detail>
+      <Detail label={t('organization.fields.subscriptionPlan')}>
+        {detail.subscriptionPlan?.displayName ?? none}
+      </Detail>
+      <Detail label={t('organization.fields.phone')}>{organization.phone ?? none}</Detail>
+      <Detail label={t('organization.fields.email')}>{organization.email ?? none}</Detail>
+      <Detail label={t('organization.fields.webUrl')}>{organization.webUrl ?? none}</Detail>
+      <Detail label={t('organization.fields.taxOffice')}>{organization.taxOffice ?? none}</Detail>
+      <Detail label={t('organization.fields.taxNumber')}>{organization.taxNumber ?? none}</Detail>
+      <Detail label={t('organization.fields.city')}>{detail.city?.displayName ?? none}</Detail>
+      <Detail label={t('organization.fields.district')}>
+        {detail.district?.displayName ?? none}
+      </Detail>
+      <Detail label={t('organization.fields.address')}>{organization.address ?? none}</Detail>
+      <Detail label={t('organization.fields.authorizedFullName')}>
+        {organization.authorizedFullName ?? none}
+      </Detail>
+      <Detail label={t('organization.fields.authorizedPhone')}>
+        {organization.authorizedPhone ?? none}
+      </Detail>
+      <Detail label={t('organization.fields.authorizedEmail')}>
+        {organization.authorizedEmail ?? none}
+      </Detail>
+      <Detail label={t('organization.fields.status')}>
+        <Badge variant={organization.isActive ? 'success' : 'danger'}>
+          {organization.isActive ? t('common.active') : t('common.passive')}
+        </Badge>
+      </Detail>
+    </Div>
+  )
+}
+
+function OfficesTab({ detail }: { detail: OrganizationNavigationDto }) {
+  const { t } = useTranslation()
+
+  if (detail.offices.length === 0) {
+    return (
+      <Div className="text-center py-4" style={{ color: 'var(--kt-gray-500)' }}>
+        {t('organization.detail.emptyOffices')}
+      </Div>
+    )
+  }
+
+  return (
+    <>
+      {detail.headquarterOffice && (
+        <P className="mb-3" style={{ color: 'var(--kt-gray-600)' }}>
+          {t('organization.detail.headquarterOffice', {
+            name: detail.headquarterOffice.displayName,
+          })}
+        </P>
+      )}
+      <Ul className="list-unstyled mb-0">
+        {detail.offices.map((office) => (
+          <Li key={office.id} className="mb-2">
+            <Link to={`/offices/${office.id}`} className="text-decoration-none">
+              {office.displayName}
+            </Link>
+            {!office.isActive && (
+              <Badge variant="danger" className="ms-2">{t('common.passive')}</Badge>
+            )}
+          </Li>
+        ))}
+      </Ul>
+    </>
+  )
+}
+
+function SubscriptionTab({ detail }: { detail: OrganizationNavigationDto }) {
+  const { t } = useTranslation()
+  const organization = detail.organization
+  const contract = detail.currentContract
+  const none = t('common.none')
+
+  return (
+    <Div className="row">
+      <Detail label={t('organization.fields.subscriptionStart')}>
+        {formatDate(organization.subscriptionStart) ?? none}
+      </Detail>
+      <Detail label={t('organization.fields.subscriptionEnd')}>
+        {formatDate(organization.subscriptionEnd) ?? t('organization.detail.openEnded')}
+      </Detail>
+      <Detail label={t('organization.fields.maximumUserCount')}>
+        {organization.maximumUserCount ?? t('organization.detail.unlimited')}
+      </Detail>
+      <Detail label={t('organization.fields.maximumCompanyCount')}>
+        {organization.maximumCompanyCount ?? t('organization.detail.unlimited')}
+      </Detail>
+
+      {contract ? (
+        <>
+          <Detail label={t('organization.fields.contractDate')}>
+            {formatDate(contract.contractDate) ?? none}
+          </Detail>
+          <Detail label={t('organization.fields.contractStatus')}>
+            {t(`enums.contractStatus.${contract.contractStatus}`)}
+          </Detail>
+          <Detail label={t('organization.fields.contractUserCount')}>{contract.userCount}</Detail>
+          <Detail label={t('organization.fields.contractPaid')}>
+            {contract.isPaid ? t('common.yes') : t('common.no')}
+          </Detail>
+        </>
+      ) : (
+        <Div className="col-12" style={{ color: 'var(--kt-gray-500)' }}>
+          {t('organization.detail.noContract')}
+        </Div>
+      )}
+    </Div>
+  )
+}

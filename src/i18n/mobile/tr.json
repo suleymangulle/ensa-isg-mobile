@@ -1,0 +1,16 @@
+{
+  "ui": {
+    "search": "Ara…",
+    "clear": "Temizle",
+    "done": "Tamam",
+    "close": "Kapat",
+    "chooseFile": "Dosya seç…",
+    "datePlaceholder": "GG.AA.YYYY",
+    "noResults": "Sonuç yok"
+  },
+  "reports": {
+    "common": {
+      "printUnavailable": "Yazdırma tamamlanmadı."
+    }
+  }
+}

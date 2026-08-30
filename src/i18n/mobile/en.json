@@ -1,0 +1,16 @@
+{
+  "ui": {
+    "search": "Search…",
+    "clear": "Clear",
+    "done": "Done",
+    "close": "Close",
+    "chooseFile": "Choose a file…",
+    "datePlaceholder": "DD.MM.YYYY",
+    "noResults": "No results"
+  },
+  "reports": {
+    "common": {
+      "printUnavailable": "The document was not printed."
+    }
+  }
+}

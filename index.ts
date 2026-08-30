@@ -1,8 +1,9 @@
-import { registerRootComponent } from 'expo';
+// `URL` and `URLSearchParams` are only partly implemented in Hermes; the router and the query
+// helpers use both. Imported first so nothing can read the unpatched globals.
+import 'react-native-url-polyfill/auto'
 
-import App from './App';
+import { registerRootComponent } from 'expo'
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
-registerRootComponent(App);
+import Root from './src/Root'
+
+registerRootComponent(Root)
