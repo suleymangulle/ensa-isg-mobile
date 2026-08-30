@@ -109,7 +109,10 @@ export default function DataTable<T>({
       header: column.header,
       align: column.align,
       width: column.width,
-      render: (row) => <Skeleton width={row.key % 3 === 2 ? '55%' : '80%'} height="1rem" />,
+      // Fixed widths, not percentages. A placeholder in the stacked table's value cell sizes
+      // itself to its content, and a percentage of a cell that has no width of its own is
+      // nothing - a loading list that showed its labels and no bars beside them.
+      render: (row) => <Skeleton width={row.key % 3 === 2 ? 90 : 140} height={14} />,
     }))
 
     return (

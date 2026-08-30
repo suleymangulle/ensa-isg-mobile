@@ -1,4 +1,7 @@
 {
+  "errors": {
+    "sessionExpired": "Your session has expired. Please sign in again."
+  },
   "ui": {
     "search": "Search…",
     "clear": "Clear",

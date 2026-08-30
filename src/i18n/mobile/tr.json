@@ -1,4 +1,7 @@
 {
+  "errors": {
+    "sessionExpired": "Oturumunuzun süresi doldu. Lütfen yeniden giriş yapın."
+  },
   "ui": {
     "search": "Ara…",
     "clear": "Temizle",

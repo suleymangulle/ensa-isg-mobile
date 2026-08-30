@@ -496,6 +496,21 @@ function apply(
   }
 
   // --- component chrome the utilities have to stand in for ------
+  if (name === 'alert') {
+    // `.alert` is a component class, and the screens that use it directly - a notice above a list,
+    // a warning inside a dialog - supply only its colours through an inline style. Without its box
+    // the text sits flush against whatever follows it, which is how a notice ended up overlapping
+    // the card beneath it.
+    view.paddingVertical = view.paddingVertical ?? 12
+    view.paddingHorizontal = view.paddingHorizontal ?? 14
+    view.borderRadius = view.borderRadius ?? 10
+    view.marginBottom = view.marginBottom ?? 16
+    return true
+  }
+  if (name === 'card' || name === 'card-body' || name === 'card-footer') {
+    // Drawn by `Card` itself; the class on a nested element is decoration the port does not need.
+    return true
+  }
   if (name === 'btn-group' || name === 'input-group' || name === 'breadcrumb') {
     // These are Bootstrap component classes rather than utilities, and each one's whole visual
     // contribution on a phone is that its children sit in a row. Without this the language

@@ -97,17 +97,28 @@ export function BrowserRouter({
   const location = stack[stack.length - 1]
   const canGoBack = stack.length > 1
 
-  // The hardware back button is the same gesture as the browser's back button, and the same
-  // stack answers it. Returning false when there is nothing left to pop lets the platform close
-  // the application, which is what a user expects at the first screen.
+  /**
+   * The hardware back button is the same gesture as the browser's back button, and the same stack
+   * answers it. Returning false when there is nothing left to pop lets the platform close the
+   * application, which is what a user expects at the first screen.
+   *
+   * The depth is read from a ref rather than from the render that registered the listener. Two
+   * back presses inside one frame both saw the pre-pop length otherwise, and the second one
+   * emptied a stack the first had already reduced to the root - leaving no location at all, and
+   * every screen reading `pathname` off `undefined`. Guarding inside the updater as well means
+   * the invariant holds even if the ref is somehow stale: there is always a route.
+   */
+  const depth = useRef(stack.length)
+  depth.current = stack.length
+
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (stack.length <= 1) return false
-      setStack((current) => current.slice(0, -1))
+      if (depth.current <= 1) return false
+      setStack((current) => (current.length <= 1 ? current : current.slice(0, -1)))
       return true
     })
     return () => subscription.remove()
-  }, [stack.length])
+  }, [])
 
   const value = useMemo<RouterContextValue>(
     () => ({ location, navigate, canGoBack }),

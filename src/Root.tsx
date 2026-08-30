@@ -5,9 +5,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppearanceProvider, ToastProvider, useAppearance } from '@/ui'
 import { BrowserRouter } from '@/navigation/router'
+import { setSessionExpiredHandler } from '@/api/http'
 import { hydrateStorage } from '@/utils/storage'
 import App from './App'
-import { AuthProvider } from './auth/AuthContext'
+import { AuthProvider, useAuth } from './auth/AuthContext'
 import { OfficeProvider } from './auth/OfficeContext'
 import ToastRegion from './components/ToastRegion'
 import { APPEARANCE_STORAGE_KEY, ENSA_COLOR_SCHEME_ID } from './styles/appearance'
@@ -77,6 +78,7 @@ export default function Root() {
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
             <AuthProvider>
+              <SessionExpiry />
               {/* Inside AuthProvider because it needs a session to ask which offices are the
                   caller's, and inside QueryClientProvider because switching office is, on this
                   client too, a cache operation. */}
@@ -92,6 +94,25 @@ export default function Root() {
       </AppearanceProvider>
     </SafeAreaProvider>
   )
+}
+
+/**
+ * Takes an unrecoverable 401 back to the sign-in screen.
+ *
+ * The web client answers a failed refresh with `window.location.href = '/login'` - a whole-page
+ * reload. There is no such thing here, and `src/api/http.ts` is a module-scope axios instance that
+ * cannot reach the session, so it publishes a handler instead and this registers it. Without the
+ * registration the handler is dead code and an expired session shows as an unexplained error on
+ * every screen the user opens, forever.
+ */
+function SessionExpiry() {
+  const { signOut } = useAuth()
+
+  useEffect(() => {
+    setSessionExpiredHandler(signOut)
+  }, [signOut])
+
+  return null
 }
 
 /** The status bar follows the theme, which is the one piece of chrome outside the React tree. */

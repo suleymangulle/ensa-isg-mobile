@@ -125,6 +125,10 @@ export function errorMessage(error: unknown): string {
   // Modules whose app services have not landed yet answer 404 with no envelope.
   if (status === 404) return i18n.t('errors.moduleUnavailable')
   if (status === 403) return i18n.t('errors.forbidden')
+  // A 401 here has already been through the refresh attempt in the interceptor, so the session is
+  // genuinely gone. `setSessionExpiredHandler` is taking the user back to sign-in; this is what
+  // the screen says in the meantime.
+  if (status === 401) return i18n.t('errors.sessionExpired')
   if (!err.response) return i18n.t('errors.network')
   return i18n.t('errors.unexpected')
 }
