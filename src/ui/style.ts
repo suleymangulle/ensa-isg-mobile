@@ -1,5 +1,5 @@
 import { useWindowDimensions, type TextStyle, type ViewStyle } from 'react-native'
-import { currentTokens } from './theme'
+import { currentTokens, useTheme } from './theme'
 
 /**
  * The web client's two styling languages, translated once.
@@ -675,6 +675,21 @@ function apply(
  */
 export function useClassName(className: string | undefined): ResolvedClassName {
   const { width } = useWindowDimensions()
+
+  // Subscribing to the palette is what makes `var(--kt-…)` reactive.
+  //
+  // A screen is reached through a route element that only changes when the location does, so a
+  // theme change does not re-render it - React sees the same element and bails out. Components
+  // that read the palette through a context hook still update, because a context change re-renders
+  // every consumer whatever its parent did; components that read it through an inline
+  // `var(--kt-primary-light)` do not, because `normalizeStyle` reads a module-level snapshot and
+  // nothing told them to render again. That is why the dashboard's tinted icons and its separator
+  // rules stayed light on a dark page while the cards behind them went dark.
+  //
+  // The value is deliberately unused: what matters is the subscription, and by the time a
+  // consumer re-renders the provider has already published the new palette.
+  useTheme()
+
   return resolveClassName(className, width)
 }
 

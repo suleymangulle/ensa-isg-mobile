@@ -8,7 +8,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native'
-import { Div, Span, useInheritedTextStyle, withText } from './html'
+import { Div, InheritText, Span, useInheritedTextStyle, withText } from './html'
 import { normalizeStyle, useStyles } from './style'
 import { useTheme } from './theme'
 import { formatLocale } from '@/i18n'
@@ -125,6 +125,8 @@ export interface FlexProps {
   className?: string
   style?: unknown
   'aria-label'?: string
+  /** Present so a `Flex` can be an overlay's trigger; see `useTrigger` in `./overlays`. */
+  onClick?: () => void
 }
 
 const GAPS = [0, 4, 8, 16, 24, 48]
@@ -140,11 +142,12 @@ const FLEX_JUSTIFY = {
 } as const
 
 export function Flex({
-  children, direction = 'row', gap = 0, align, justify, wrap, grow, className, style, ...rest
+  children, direction = 'row', gap = 0, align, justify, wrap, grow, className, style, onClick, ...rest
 }: FlexProps) {
   return (
     <Div
       className={className}
+      onClick={onClick}
       aria-label={rest['aria-label']}
       style={{
         flexDirection: direction,
@@ -247,7 +250,7 @@ export function Card({ children, title, header, footer, className, style, flush 
 
       {hasBody ? (
         <View style={flush ? undefined : { padding: 16 }}>
-          {withText(children, { color: theme['gray-700'] })}
+          <InheritText style={{ color: theme['gray-700'] }}>{children}</InheritText>
         </View>
       ) : null}
 
@@ -332,7 +335,7 @@ export function Alert({ children, variant = 'primary', className, style }: Alert
         view,
       ]}
     >
-      {withText(children, { color: fg, fontSize: 14 })}
+      <InheritText style={{ color: fg, fontSize: 14 }}>{children}</InheritText>
     </View>
   )
 }

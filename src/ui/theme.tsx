@@ -256,7 +256,12 @@ export function AppearanceProvider({
       ...METRICS,
       primary: colorScheme.primary,
       'primary-active': colorScheme.primaryActive,
-      'primary-light': colorScheme.primaryLight,
+      // The scheme's pale tint is a light-theme colour, and letting it through on a dark page
+      // leaves a near-white block on it - which is what the dashboard's "Companies" and "Visits"
+      // tiles were. The web client has the same conflict and resolves it the same way: the dark
+      // block in `ensa.scss` is written after the provider's variables and wins.
+      'primary-light':
+        resolvedTheme === 'dark' ? palette['primary-light'] : colorScheme.primaryLight,
       'primary-inverse': colorScheme.primaryInverse,
       'primary-rgb': colorScheme.primaryRgb,
     }

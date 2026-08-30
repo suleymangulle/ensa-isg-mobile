@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from 'react'
 import { ScrollView, Text as RNText, View, useWindowDimensions } from 'react-native'
-import { withText } from './html'
+import { InheritText, withText } from './html'
 import { useTheme } from './theme'
 
 /**
@@ -66,7 +66,7 @@ export function DataGrid<T>({ columns, rows, rowKey, emptyText, layout = 'auto' 
   if (rows.length === 0) {
     return emptyText ? (
       <View style={{ paddingVertical: 32, alignItems: 'center' }}>
-        {withText(emptyText, { color: theme['gray-500'], fontSize: 14 })}
+        <InheritText style={{ color: theme['gray-500'], fontSize: 14 }}>{emptyText}</InheritText>
       </View>
     ) : null
   }
@@ -117,12 +117,16 @@ function StackedLayout<T>({ columns, rows, rowKey }: Omit<DataGridProps<T>, 'emp
                   </RNText>
                 )}
                 <View style={{ flexShrink: 1, alignItems: isTitle ? 'flex-start' : 'flex-end' }}>
-                  {withText(content, {
-                    color: isTitle ? theme['gray-900'] : theme['gray-800'],
-                    fontSize: isTitle ? 16 : 14,
-                    fontWeight: isTitle ? '600' : '400',
-                    textAlign: isTitle ? 'left' : 'right',
-                  })}
+                  <InheritText
+                    style={{
+                      color: isTitle ? theme['gray-900'] : theme['gray-800'],
+                      fontSize: isTitle ? 16 : 14,
+                      fontWeight: isTitle ? '600' : '400',
+                      textAlign: isTitle ? 'left' : 'right',
+                    }}
+                  >
+                    {content}
+                  </InheritText>
                 </View>
               </View>
             )
@@ -185,11 +189,15 @@ function TableLayout<T>({ columns, rows, rowKey }: Omit<DataGridProps<T>, 'empty
           >
             {columns.map((column) => (
               <View key={column.key} style={columnStyle(column)}>
-                {withText(cellContent(column, row), {
-                  color: theme['gray-800'],
-                  fontSize: 14,
-                  textAlign: TEXT_ALIGN[column.align ?? 'start'],
-                })}
+                <InheritText
+                  style={{
+                    color: theme['gray-800'],
+                    fontSize: 14,
+                    textAlign: TEXT_ALIGN[column.align ?? 'start'],
+                  }}
+                >
+                  {cellContent(column, row)}
+                </InheritText>
               </View>
             ))}
           </View>

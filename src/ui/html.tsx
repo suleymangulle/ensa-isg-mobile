@@ -78,6 +78,31 @@ export function withText(children: ReactNode, style: StyleProp<TextStyle>): Reac
   })
 }
 
+/**
+ * Publishes a text style to everything inside it, elements included.
+ *
+ * `withText` only reaches loose strings: it wraps them in a `Text` and styles that. Anything the
+ * caller passed as an element - a `Span` holding a record's name, a `Text` inside a card - is
+ * handed through untouched, and a bare `Span` with no colour of its own falls back to React
+ * Native's default, which is black. That is invisible on a dark page, and it is what made every
+ * list row's title unreadable in dark mode while the plain string cells beside it were fine.
+ *
+ * So the style is put on the context as well, which is the same mechanism `Div` uses and the same
+ * thing the CSS cascade was doing in the web client.
+ */
+export function InheritText({
+  style,
+  children,
+}: {
+  style: TextStyle
+  children: ReactNode
+}) {
+  const inherited = useInheritedTextStyle()
+  const merged = useMemo<TextStyle>(() => ({ ...inherited, ...style }), [inherited, style])
+
+  return <Inherited.Provider value={merged}>{withText(children, merged)}</Inherited.Provider>
+}
+
 /** True when every child is plain text - the case that can be rendered as one `Text` node. */
 export function isTextOnly(children: ReactNode): boolean {
   const items = Children.toArray(children)

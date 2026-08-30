@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { cloneElement, isValidElement, useState, type ReactElement, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   KeyboardAvoidingView,
@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { withText } from './html'
+import { InheritText } from './html'
 import { useTheme } from './theme'
 
 /**
@@ -95,7 +95,7 @@ export function Modal({ open, onClose, title, footer, children, size }: ModalPro
               contentContainerStyle={{ padding: 16 }}
               keyboardShouldPersistTaps="handled"
             >
-              {withText(children, { color: theme['gray-700'] })}
+              <InheritText style={{ color: theme['gray-700'] }}>{children}</InheritText>
             </ScrollView>
 
             {footer ? (
@@ -116,6 +116,38 @@ export function Modal({ open, onClose, title, footer, children, size }: ModalPro
         </SafeAreaView>
       </KeyboardAvoidingView>
     </RNModal>
+  )
+}
+
+/**
+ * Turns whatever a caller passed as the trigger into something that opens the overlay.
+ *
+ * Wrapping it in a `Pressable` looks like the obvious answer and is wrong: React Native gives the
+ * touch to the innermost view that claims it, and a `Button` claims every touch that lands on it
+ * whether or not it has a handler. The wrapper's `onPress` then never fires - which is exactly
+ * what happened to the appearance menu, whose trigger is a `Button`: the popover could not be
+ * opened at all.
+ *
+ * So the handler goes onto the trigger itself, the way the web library attaches it, and composes
+ * with any handler the trigger already had.
+ */
+function useTrigger(children: ReactNode, open: () => void): ReactNode {
+  if (isValidElement(children)) {
+    const child = children as ReactElement<{ onClick?: () => void }>
+
+    return cloneElement(child, {
+      onClick: () => {
+        child.props.onClick?.()
+        open()
+      },
+    })
+  }
+
+  // A bare string or a fragment has nothing to attach to; it gets the wrapper it can use.
+  return (
+    <Pressable onPress={open} accessibilityRole="button">
+      {children}
+    </Pressable>
   )
 }
 
@@ -146,9 +178,7 @@ export function Menu({
 
   return (
     <>
-      <Pressable onPress={() => setOpen(true)} accessibilityRole="button">
-        {children}
-      </Pressable>
+      {useTrigger(children, () => setOpen(true))}
 
       <RNModal visible={isOpen} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable
@@ -233,9 +263,7 @@ export function Popover({
 
   return (
     <>
-      <Pressable onPress={() => setOpen(true)} accessibilityRole="button">
-        {children}
-      </Pressable>
+      {useTrigger(children, () => setOpen(true))}
 
       <RNModal visible={isOpen} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
