@@ -89,6 +89,10 @@ export function Button({
     borderWidth: 1,
     borderColor: isNeutral ? theme['border-color'] : colors.border,
     opacity: isDisabled ? 0.55 : 1,
+    // `inline-block`, as `.btn` is: a button is as wide as its label, not as wide as whatever
+    // contains it. Without this a button alone in a column fills the width and centres its label,
+    // which reads as a heading rather than as a control.
+    alignSelf: block ? 'stretch' : 'flex-start',
     ...(block ? { width: '100%' } : null),
   }
 

@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  KeyboardAvoidingView,
   Modal as RNModal,
   Platform,
   Pressable,
@@ -55,7 +56,19 @@ export function FormField({ label, required, error, helpText, className, style, 
   const { view } = useStyles(className, style)
 
   return (
-    <View style={[{ marginBottom: 14 }, view]}>
+    // `minWidth` because a field is not always laid out by a form: the stacked table puts controls
+    // in a right-aligned value cell, where a control with no intrinsic width collapses to nothing.
+    // A field the user cannot see is a field they cannot fill.
+    <View
+      style={[
+        { marginBottom: 14 },
+        view,
+        // After `view`, so a screen's own `min-w-0` still wins - but a field that nobody sized
+        // keeps a width it can be read and tapped at. The stacked table's value cell shrink-wraps
+        // its content, and a control shrink-wraps to nothing.
+        view.minWidth === undefined ? { minWidth: 160 } : null,
+      ]}
+    >
       {label ? (
         <RNText style={{ color: theme['gray-700'], fontSize: 13, fontWeight: '600', marginBottom: 6 }}>
           {label}
@@ -397,7 +410,7 @@ export function Select<T extends string | number = string | number>({
       >
         <RNText
           numberOfLines={1}
-          style={{ flex: 1, color: selected ? theme['gray-800'] : theme['gray-500'], fontSize: 15 }}
+          style={{ flexShrink: 1, minWidth: 0, color: selected ? theme['gray-800'] : theme['gray-500'], fontSize: 15 }}
         >
           {loading ? '…' : (selected?.label ?? placeholder ?? '')}
         </RNText>
@@ -525,6 +538,9 @@ function OptionSheet<T extends string | number>({
 
   return (
     <RNModal visible={isOpen} transparent animationType="slide" onRequestClose={onClose}>
+      {/* The search box sits at the top of the sheet and the keyboard comes up under it; without
+          this the options being searched are the ones the keyboard is covering. */}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: 'flex-end' }}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} onPress={onClose} />
 
       <View
@@ -629,6 +645,7 @@ function OptionSheet<T extends string | number>({
           </Pressable>
         ) : null}
       </View>
+      </KeyboardAvoidingView>
     </RNModal>
   )
 }

@@ -226,12 +226,9 @@ export function Card({ children, title, header, footer, className, style, flush 
       {(title || header) && (
         <View
           style={{
-            // A row, because the header is where a screen puts a title on the left and its
-            // controls on the right - `ms-auto` on the second child is the whole layout, and it
-            // means nothing in a column.
-            flexDirection: 'row',
-            alignItems: 'center',
-            flexWrap: 'wrap',
+            // A block, not a row: a header holds anything from a search field that wants the full
+            // width to a tab strip to a title with a badge beside it. `ms-auto` still right-aligns
+            // the child that asks for it, because `marginLeft: 'auto'` works in a column too.
             gap: 8,
             paddingHorizontal: 16,
             paddingVertical: 12,

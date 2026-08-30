@@ -399,7 +399,10 @@ export function NativeSelect({ value, disabled, size, className, style, onChange
         accessibilityRole="button"
         accessibilityLabel={rest['aria-label'] ?? rest.title}
       >
-        <RNText numberOfLines={1} style={{ flex: 1, color: theme['gray-800'], fontSize: 15 }}>
+        {/* `flexShrink`, not `flex: 1`. A basis of zero inside a row that sizes itself to its
+            content collapses the label to nothing, which is how a 190px picker rendered as an
+            empty box with a caret in it. */}
+        <RNText numberOfLines={1} style={{ flexShrink: 1, minWidth: 0, color: theme['gray-800'], fontSize: 15 }}>
           {selected?.label ?? ''}
         </RNText>
         <RNText style={{ color: theme['gray-500'], fontSize: 12 }}>▼</RNText>

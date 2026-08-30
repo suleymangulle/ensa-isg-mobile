@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  KeyboardAvoidingView,
   Modal as RNModal,
   Pressable,
   ScrollView,
@@ -46,7 +47,13 @@ export function Modal({ open, onClose, title, footer, children, size }: ModalPro
 
   return (
     <RNModal visible={open} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' }}>
+      {/* Every dialog in this application is a form, and a form sheet anchored to the bottom of
+          the screen is exactly what a keyboard covers. React Native does not move a modal's
+          contents on its own, so the sheet is lifted by the keyboard's height. */}
+      <KeyboardAvoidingView
+        behavior="padding"
+        style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' }}
+      >
         <Pressable style={{ flex: 1 }} onPress={onClose} accessibilityLabel={t('ui.close')} />
 
         <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme['card-bg'] }}>
@@ -107,7 +114,7 @@ export function Modal({ open, onClose, title, footer, children, size }: ModalPro
             ) : null}
           </View>
         </SafeAreaView>
-      </View>
+      </KeyboardAvoidingView>
     </RNModal>
   )
 }
