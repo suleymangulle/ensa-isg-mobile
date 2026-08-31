@@ -42,3 +42,6 @@ yarn-error.*
 
 # bundle output of `npm run bundle`
 .expo-export/
+
+# Built APKs copied out of android/app/build for hand-off
+*.apk
